@@ -1,0 +1,6 @@
+{
+  "name": "NEXUS AI",
+  "description": "Futuristic personal AI assistant with voice recognition, smart device controls, Hindi/Hinglish/English natural language command engine, and offline capabilities.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
