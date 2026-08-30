@@ -5,6 +5,9 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -19,12 +22,16 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@v4
-      with:
-        gradle-version: '8.12'
+    - name: Create local.properties with Android SDK
+      run: |
+        echo "sdk.dir=$ANDROID_HOME" > local.properties
 
-    - name: Ensure Debug Keystore Exists
+    - name: Setup Gradle wrapper
+      run: |
+        gradle wrapper --gradle-version 8.12 || true
+        chmod +x gradlew || true
+
+    - name: Create Debug Keystore
       run: |
         if [ -f "debug.keystore.base64" ]; then
           base64 -d debug.keystore.base64 > debug.keystore
@@ -33,22 +40,28 @@ jobs:
           keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
         fi
 
-    - name: Create empty .env if missing
+    - name: Create secrets and env files
       run: |
         touch .env
         touch .env.example
+        echo "GEMINI_API_KEY=" > secrets.properties
 
-    - name: Build Debug APK
-      run: gradle assembleDebug --stacktrace
+    - name: Build Debug APK with Gradle
+      run: |
+        if [ -f "./gradlew" ]; then
+          ./gradlew assembleDebug --no-daemon --stacktrace -Dorg.gradle.configuration-cache=false
+        else
+          gradle assembleDebug --no-daemon --stacktrace -Dorg.gradle.configuration-cache=false
+        fi
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: NexusAI-Debug-APK
+        name: NEXUS-AI-Debug-APK
         path: app/build/outputs/apk/debug/*.apk
 
     - name: Create GitHub Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       if: success()
       with:
         tag_name: v1.0.${{ github.run_number }}
